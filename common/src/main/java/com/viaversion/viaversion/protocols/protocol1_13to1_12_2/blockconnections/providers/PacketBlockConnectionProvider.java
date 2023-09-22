@@ -66,8 +66,7 @@ public class PacketBlockConnectionProvider extends BlockConnectionProvider {
     }
 
     @Override
-    public UserBlockData forUser(UserConnection connection) {
-        final BlockConnectionStorage storage = connection.get(BlockConnectionStorage.class);
-        return (x, y, z) -> storage.get(x, y, z);
+    public UserChunkSection forUserSection(UserConnection connection, int chunkX, int chunkY, int chunkZ) {
+        return connection.get(BlockConnectionStorage.class).getSection(chunkX, chunkY, chunkZ);
     }
 }

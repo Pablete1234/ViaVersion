@@ -20,6 +20,8 @@ package com.viaversion.viaversion.bukkit.providers;
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.BlockConnectionProvider;
 import java.util.UUID;
+
+import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.UserChunkSection;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
@@ -52,4 +54,12 @@ public class BukkitBlockConnectionProvider extends BlockConnectionProvider {
         }
         return lastChunk = world.getChunkAt(x, z);
     }
+
+    public UserChunkSection forUserSection(UserConnection connection, int chunkX, int chunkY, int chunkZ) {
+        int minX = chunkX << 4;
+        int minY = chunkY << 4;
+        int minZ = chunkZ << 4;
+        return (x, y, z) -> getBlockData(connection, minX + x, minY + y, minZ + z);
+    }
+
 }

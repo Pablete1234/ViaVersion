@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Queue;
 
 import com.viaversion.viaversion.api.minecraft.Position;
+import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.UserChunkSection;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class BlockConnectionStorage implements StorableObject {
@@ -126,6 +127,11 @@ public class BlockConnectionStorage implements StorableObject {
 
     public void unloadSection(int x, int y, int z) {
         removeSection(getChunkSectionIndex(x << 4, y << 4, z << 4));
+    }
+
+    public UserChunkSection getSection(int chunkX, int chunkY, int chunkZ) {
+        SectionData section = blockStorage.get(getChunkSectionIndex(chunkX, chunkY, chunkZ));
+        return section == null ? null : section::blockAt;
     }
 
     private @Nullable SectionData getSection(long index) {

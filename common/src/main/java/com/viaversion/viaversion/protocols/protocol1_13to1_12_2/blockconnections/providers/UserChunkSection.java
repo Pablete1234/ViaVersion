@@ -18,7 +18,8 @@
 package com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers;
 
 @FunctionalInterface
-public interface UserBlockData {
+public interface UserChunkSection {
 
-    int getBlockData(int x, int y, int z);
+    int getBlockData(int xOffset, int yOffset, int zOffset);
+
 }

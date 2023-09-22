@@ -69,8 +69,8 @@ public class BlockConnectionProvider implements Provider {
         return false;
     }
 
-    public UserBlockData forUser(UserConnection connection) {
-        return (x, y, z) -> getBlockData(connection, x, y, z);
+    public @Nullable UserChunkSection forUserSection(UserConnection connection, int chunkX, int chunkY, int chunkZ) {
+        return null;
     }
 
 }

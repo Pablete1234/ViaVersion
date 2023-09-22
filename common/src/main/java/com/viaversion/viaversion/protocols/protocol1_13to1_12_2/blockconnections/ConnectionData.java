@@ -39,7 +39,7 @@ import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPacke
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.Protocol1_13To1_12_2;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.BlockConnectionProvider;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.PacketBlockConnectionProvider;
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.UserBlockData;
+import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.blockconnections.providers.UserChunkSection;
 import com.viaversion.viaversion.util.Key;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -662,31 +662,40 @@ public final class ConnectionData {
 
     public static final class NeighbourUpdater {
         private final UserConnection user;
-        private final UserBlockData userBlockData;
+        private final List<BlockChangeRecord1_8> updates = new ArrayList<>();
 
         public NeighbourUpdater(UserConnection user) {
             this.user = user;
-            this.userBlockData = blockConnectionProvider.forUser(user);
         }
 
         public void updateChunkSectionNeighbours(int chunkX, int chunkZ, int chunkSectionY) throws Exception {
             int chunkMinY = chunkSectionY << 4;
-            List<BlockChangeRecord1_8> updates = new ArrayList<>();
             for (int chunkDeltaX = -1; chunkDeltaX <= 1; chunkDeltaX++) {
                 for (int chunkDeltaZ = -1; chunkDeltaZ <= 1; chunkDeltaZ++) {
                     int distance = Math.abs(chunkDeltaX) + Math.abs(chunkDeltaZ);
                     if (distance == 0) continue;
 
+                    UserChunkSection section = blockConnectionProvider.forUserSection(
+                            user, chunkX + chunkDeltaX, chunkSectionY, chunkZ + chunkDeltaZ);
+                    if (section == null) continue;
+
                     int chunkMinX = (chunkX + chunkDeltaX) << 4;
                     int chunkMinZ = (chunkZ + chunkDeltaZ) << 4;
                     if (distance == 2) { // Corner
-                        for (int blockY = chunkMinY; blockY < chunkMinY + 16; blockY++) {
-                            int blockPosX = chunkDeltaX == 1 ? 0 : 15;
-                            int blockPosZ = chunkDeltaZ == 1 ? 0 : 15;
-                            updateBlock(chunkMinX + blockPosX, blockY, chunkMinZ + blockPosZ, updates);
+                        int blockPosX = chunkDeltaX == 1 ? 0 : 15;
+                        int blockPosZ = chunkDeltaZ == 1 ? 0 : 15;
+                        for (int blockPosY = 0; blockPosY < 16; blockPosY++) {
+                            int blockState = section.getBlockData(blockPosX, blockPosY, blockPosZ);
+                            ConnectionHandler handler = getConnectionHandler(blockState);
+                            if (handler != null) {
+                                updateBlock(blockState, handler,
+                                        chunkMinX + blockPosX,
+                                        chunkMinY + blockPosY,
+                                        chunkMinZ + blockPosZ);
+                            }
                         }
                     } else {
-                        for (int blockY = chunkMinY; blockY < chunkMinY + 16; blockY++) {
+                        for (int blockPosY = 0; blockPosY < 16; blockPosY++) {
                             int xStart, xEnd;
                             int zStart, zEnd;
                             if (chunkDeltaX == 1) {
@@ -710,9 +719,16 @@ public final class ConnectionData {
                                 zStart = 14;
                                 zEnd = 16;
                             }
-                            for (int blockX = xStart; blockX < xEnd; blockX++) {
-                                for (int blockZ = zStart; blockZ < zEnd; blockZ++) {
-                                    updateBlock(chunkMinX + blockX, blockY, chunkMinZ + blockZ, updates);
+                            for (int blockPosX = xStart; blockPosX < xEnd; blockPosX++) {
+                                for (int blockPosZ = zStart; blockPosZ < zEnd; blockPosZ++) {
+                                    int blockState = section.getBlockData(blockPosX, blockPosY, blockPosZ);
+                                    ConnectionHandler handler = getConnectionHandler(blockState);
+                                    if (handler != null) {
+                                        updateBlock(blockState, handler,
+                                                chunkMinX + blockPosX,
+                                                chunkMinY + blockPosY,
+                                                chunkMinZ + blockPosZ);
+                                    }
                                 }
                             }
                         }
@@ -730,17 +746,11 @@ public final class ConnectionData {
             }
         }
 
-        private void updateBlock(int x, int y, int z, List<BlockChangeRecord1_8> records) {
-            int blockState = userBlockData.getBlockData(x, y, z);
-            ConnectionHandler handler = getConnectionHandler(blockState);
-            if (handler == null) {
-                return;
-            }
-
+        private void updateBlock(int blockState, ConnectionHandler handler, int x, int y, int z) {
             Position pos = new Position(x, y, z);
             int newBlockState = handler.connect(user, pos, blockState);
             if (blockState != newBlockState || !blockConnectionProvider.storesBlocks(user, null)) {
-                records.add(new BlockChangeRecord1_8(x & 0xF, y, z & 0xF, newBlockState));
+                updates.add(new BlockChangeRecord1_8(x & 0xF, y, z & 0xF, newBlockState));
                 updateBlockStorage(user, x, y, z, newBlockState);
             }
         }
